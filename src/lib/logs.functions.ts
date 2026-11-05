@@ -137,7 +137,7 @@ export const getWalletBalance = createServerFn({ method: "GET" })
 
 export const verifyPaystackPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ reference: z.string(), amountInNaira: z.number() }))
+  .validator(z.object({ reference: z.string(), amountInNaira: z.number() }))
   .handler(async ({ data, context }) => {
     const { reference, amountInNaira } = data;
     try {
@@ -327,7 +327,7 @@ export const getOrCreatePocketFiAccount = createServerFn({ method: "POST" })
 // Purchase one log from a product
 export const purchaseLog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ productId: z.string(), price: z.number().optional() }))
+  .validator(z.object({ productId: z.string(), price: z.number().optional() }))
   .handler(async ({ data, context }) => {
     // Check if RakibSocials product
     if (data.productId.startsWith('rakib_')) {
@@ -468,7 +468,7 @@ export const listMyLogs = createServerFn({ method: "GET" })
 // Get preview samples for a product (RakibSocials API products)
 export const getProductPreviews = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ productId: z.string() }))
+  .validator(z.object({ productId: z.string() }))
   .handler(async ({ data }) => {
     // Only works for RakibSocials products
     if (!data.productId.startsWith('rakib_')) {
@@ -543,7 +543,7 @@ const productInput = z.object({
 
 export const adminCreateLogProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(productInput)
+  .validator(productInput)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const items = parseBulk(data.bulkLogs);
@@ -576,7 +576,7 @@ export const adminCreateLogProduct = createServerFn({ method: "POST" })
 
 export const adminUpdateLogProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     productInput.partial({ bulkLogs: true }).extend({
       id: z.string(),
       bulkLogs: z.string().optional(),
@@ -623,7 +623,7 @@ export const adminUpdateLogProduct = createServerFn({ method: "POST" })
 
 export const adminDeleteLogProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ id: z.string() }))
+  .validator(z.object({ id: z.string() }))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { error } = await context.supabase.from("log_products").delete().eq("id", data.id);
@@ -633,7 +633,7 @@ export const adminDeleteLogProduct = createServerFn({ method: "POST" })
 
 export const adminAddBalance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ userId: z.string(), amount: z.number() }))
+  .validator(z.object({ userId: z.string(), amount: z.number() }))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { data: res, error } = await context.supabase.rpc("rpc_admin_add_balance", {
@@ -687,7 +687,7 @@ export const adminListPayments = createServerFn({ method: "GET" })
 // Admin get raw unsold items for a product to populate edit box
 export const adminGetLogProductItems = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ productId: z.string() }))
+  .validator(z.object({ productId: z.string() }))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { data: items, error } = await context.supabase

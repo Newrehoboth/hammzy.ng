@@ -15,7 +15,7 @@ function normalizeOrigin(origin: string) {
 
 // Send (or resend) a signup verification code to the user's email.
 export const sendSignupCode = createServerFn({ method: "POST" })
-  .inputValidator((d: { email: string; origin: string }) => d)
+  .validator((d: { email: string; origin: string }) => d)
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const origin = normalizeOrigin(data.origin);
@@ -46,7 +46,7 @@ export const sendSignupCode = createServerFn({ method: "POST" })
 
 // Verify the signup code and mark the profile verified.
 export const verifySignupCode = createServerFn({ method: "POST" })
-  .inputValidator((d: { email: string; code: string }) => d)
+  .validator((d: { email: string; code: string }) => d)
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const code = data.code.trim();
@@ -69,7 +69,7 @@ export const verifySignupCode = createServerFn({ method: "POST" })
 
 // Request a password reset link. Always returns ok to avoid leaking which emails exist.
 export const requestPasswordReset = createServerFn({ method: "POST" })
-  .inputValidator((d: { email: string; origin: string }) => d)
+  .validator((d: { email: string; origin: string }) => d)
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const origin = normalizeOrigin(data.origin);
@@ -95,7 +95,7 @@ export const requestPasswordReset = createServerFn({ method: "POST" })
 
 // Complete a password reset using a token from the email link.
 export const resetPassword = createServerFn({ method: "POST" })
-  .inputValidator((d: { token: string; password: string }) => d)
+  .validator((d: { token: string; password: string }) => d)
   .handler(async ({ data }) => {
     const token = data.token.trim();
     const password = data.password;

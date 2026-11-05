@@ -194,7 +194,7 @@ export const adminListLogPurchases = createServerFn({ method: "GET" })
 
 export const adminSetSuspended = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { userId: string; suspended: boolean }) => d)
+  .validator((d: { userId: string; suspended: boolean }) => d)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -211,7 +211,7 @@ export const adminSetSuspended = createServerFn({ method: "POST" })
 
 export const adminDeleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { userId: string }) => d)
+  .validator((d: { userId: string }) => d)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     if (data.userId === context.userId) throw new Error("You cannot delete your own admin account");
