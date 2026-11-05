@@ -1,7 +1,7 @@
 {
   "framework": null,
-  "buildCommand": "rm -rf .tanstack .nitro .vercel/output && npm run build",
+  "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "installCommand": "rm -rf node_modules .tanstack && npm install",
+  "installCommand": "npm install",
   "outputDirectory": ".vercel/output"
 }
