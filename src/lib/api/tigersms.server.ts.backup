@@ -1,0 +1,511 @@
+import process from "node:process";
+import fs from "node:fs";
+import path from "node:path";
+import servicesJsonRaw from "./services.json";
+
+const BASE_URL = "https://api.tiger-sms.com/stubs/handler_api.php";
+
+function getApiKey(): string {
+  let key = process.env.TIGERSMS_API_KEY;
+  if (!key) {
+    try {
+      const envPath = path.resolve(process.cwd(), ".env");
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, "utf-8");
+        const match = envContent.match(/^TIGERSMS_API_KEY\s*=\s*["']?([^"'\r\n]+)["']?/m);
+        if (match && match[1]) {
+          key = match[1];
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to manually parse .env file for Tiger SMS key:", e);
+    }
+  }
+  if (!key) throw new Error("TIGERSMS_API_KEY is not set in environment variables.");
+  return key;
+}
+
+async function tigerRequest(params: Record<string, string>): Promise<string> {
+  const qs = new URLSearchParams({ api_key: getApiKey(), ...params }).toString();
+  const url = `${BASE_URL}?${qs}`;
+  
+  // Log the request (hide API key for security)
+  const logParams = { ...params, api_key: "***" };
+  console.log(`[Tiger SMS] API Request:`, logParams);
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    const text = await response.text().catch(() => `HTTP ${response.status}`);
+    console.error(`[Tiger SMS] API HTTP Error (${response.status}):`, text);
+    throw new Error(`Tiger SMS API error (${response.status}): ${text}`);
+  }
+  const text = await response.text();
+  console.log(`[Tiger SMS] API Response:`, text.trim());
+  return text.trim();
+}
+
+// ─── Service Code to Name Mapping ───────────────────────────────────────────
+
+// Import services.json directly so it's bundled with the deployment
+const serviceMap: Record<string, string> = servicesJsonRaw as Record<string, string>;
+const reverseServiceMap: Record<string, string> = {};
+
+// Build reverse mapping for lookups
+Object.entries(serviceMap).forEach(([code, name]) => {
+  // Normalize values to lowercase for case-insensitive lookup
+  reverseServiceMap[name.toLowerCase()] = code.toLowerCase();
+});
+
+export function getServiceDisplayName(code: string): string {
+  const name = serviceMap[code.toLowerCase()];
+  if (name) return name;
+  return code.charAt(0).toUpperCase() + code.slice(1);
+}
+
+export function getServiceCode(displayName: string): string {
+  const code = reverseServiceMap[displayName.toLowerCase()];
+  if (code) return code;
+  // If not found directly, check for exact match in entries
+  const entry = Object.entries(serviceMap).find(
+    ([, val]) => val.toLowerCase() === displayName.toLowerCase()
+  );
+  if (entry) return entry[0];
+  return displayName.toLowerCase();
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface TigerCountry {
+  id: number;     // numeric country ID used in API calls
+  name: string;
+  iso: string;    // 2-letter ISO code (for flag display)
+}
+
+export interface TigerProduct {
+  name: string;
+  qty: number;
+  price: number;  // already in USD (from API) — will be converted to ₦ upstream
+}
+
+export interface TigerSms {
+  id: string;
+  created_at: string;
+  sender: string;
+  text: string;
+  code: string;
+}
+
+// Tiger SMS activation statuses
+export type TigerOrderStatus = "pending" | "received" | "canceled" | "finished" | "banned" | "timeout";
+
+export interface TigerOrder {
+  id: string;         // activation ID
+  phone: string;      // phone number (without leading +)
+  service: string;
+  country: number;    // numeric country ID
+  price: number;      // price in USD
+  status: TigerOrderStatus;
+  expiresAt: string;  // ISO expiry time (estimated ~20 min from purchase)
+  sms: TigerSms[];
+}
+
+// Raw getPrices response format:
+// { "countryId": { "serviceCode": { "cost": "0.50", "count": 100 } } }
+export type TigerPricesRaw = Record<
+  string,
+  Record<string, { cost: string; count: number }>
+>;
+
+// ─── Static Country Table ────────────────────────────────────────────────────
+// Tiger SMS uses numeric country IDs — no API endpoint for listing countries.
+// This table was built from https://tiger-sms.com/api (country section).
+
+export const TIGER_COUNTRIES: TigerCountry[] = [
+  { id: 0, name: "Russia", iso: "RU" },
+  { id: 1, name: "Ukraine", iso: "UA" },
+  { id: 2, name: "Kazakhstan", iso: "KZ" },
+  { id: 4, name: "Philippines", iso: "PH" },
+  { id: 5, name: "Myanmar", iso: "MM" },
+  { id: 6, name: "Indonesia", iso: "ID" },
+  { id: 7, name: "Malaysia", iso: "MY" },
+  { id: 8, name: "Kenya", iso: "KE" },
+  { id: 9, name: "Tanzania", iso: "TZ" },
+  { id: 10, name: "Vietnam", iso: "VN" },
+  { id: 11, name: "Kyrgyzstan", iso: "KG" },
+  { id: 13, name: "Israel", iso: "IL" },
+  { id: 14, name: "Hong Kong", iso: "HK" },
+  { id: 15, name: "Poland", iso: "PL" },
+  { id: 16, name: "United Kingdom", iso: "GB" },
+  { id: 17, name: "Madagascar", iso: "MG" },
+  { id: 18, name: "Congo Dem. Republic", iso: "CG" },
+  { id: 19, name: "Nigeria", iso: "NG" },
+  { id: 20, name: "Macau", iso: "MO" },
+  { id: 21, name: "Egypt", iso: "EG" },
+  { id: 22, name: "India", iso: "IN" },
+  { id: 23, name: "Ireland", iso: "IE" },
+  { id: 24, name: "Cambodia", iso: "KH" },
+  { id: 25, name: "Laos", iso: "LA" },
+  { id: 26, name: "Haiti", iso: "HT" },
+  { id: 27, name: "Ivory Coast", iso: "CI" },
+  { id: 28, name: "Gambia", iso: "GM" },
+  { id: 29, name: "Serbia", iso: "RS" },
+  { id: 30, name: "Yemen", iso: "YE" },
+  { id: 31, name: "South Africa", iso: "ZA" },
+  { id: 32, name: "Romania", iso: "RO" },
+  { id: 33, name: "Colombia", iso: "CO" },
+  { id: 34, name: "Estonia", iso: "EE" },
+  { id: 35, name: "Azerbaijan", iso: "AZ" },
+  { id: 36, name: "Canada", iso: "CA" },
+  { id: 37, name: "Morocco", iso: "MA" },
+  { id: 38, name: "Ghana", iso: "GH" },
+  { id: 39, name: "Argentina", iso: "AR" },
+  { id: 40, name: "Uzbekistan", iso: "UZ" },
+  { id: 41, name: "Cameroon", iso: "CM" },
+  { id: 42, name: "Chad", iso: "TD" },
+  { id: 43, name: "Germany", iso: "DE" },
+  { id: 44, name: "Lithuania", iso: "LT" },
+  { id: 45, name: "Croatia", iso: "HR" },
+  { id: 46, name: "Sweden", iso: "SE" },
+  { id: 47, name: "Iraq", iso: "IQ" },
+  { id: 48, name: "Netherlands", iso: "NL" },
+  { id: 49, name: "Latvia", iso: "LV" },
+  { id: 50, name: "Austria", iso: "AT" },
+  { id: 51, name: "Belarus", iso: "BY" },
+  { id: 52, name: "Thailand", iso: "TH" },
+  { id: 53, name: "Saudi Arabia", iso: "SA" },
+  { id: 54, name: "Mexico", iso: "MX" },
+  { id: 55, name: "Taiwan", iso: "TW" },
+  { id: 56, name: "Spain", iso: "ES" },
+  { id: 57, name: "Iran", iso: "IR" },
+  { id: 58, name: "Algeria", iso: "DZ" },
+  { id: 59, name: "Slovenia", iso: "SI" },
+  { id: 60, name: "Bangladesh", iso: "BD" },
+  { id: 61, name: "Senegal", iso: "SN" },
+  { id: 62, name: "Turkey", iso: "TR" },
+  { id: 63, name: "Czech Republic", iso: "CZ" },
+  { id: 64, name: "Sri Lanka", iso: "LK" },
+  { id: 65, name: "Peru", iso: "PE" },
+  { id: 66, name: "Pakistan", iso: "PK" },
+  { id: 67, name: "New Zealand", iso: "NZ" },
+  { id: 68, name: "Guinea", iso: "GN" },
+  { id: 69, name: "Mali", iso: "ML" },
+  { id: 70, name: "Venezuela", iso: "VE" },
+  { id: 71, name: "Ethiopia", iso: "ET" },
+  { id: 72, name: "Mongolia", iso: "MN" },
+  { id: 73, name: "Brazil", iso: "BR" },
+  { id: 74, name: "Afghanistan", iso: "AF" },
+  { id: 75, name: "Uganda", iso: "UG" },
+  { id: 76, name: "Angola", iso: "AO" },
+  { id: 77, name: "Cyprus", iso: "CY" },
+  { id: 78, name: "France", iso: "FR" },
+  { id: 80, name: "Mozambique", iso: "MZ" },
+  { id: 81, name: "Nepal", iso: "NP" },
+  { id: 82, name: "Belgium", iso: "BE" },
+  { id: 83, name: "Bulgaria", iso: "BG" },
+  { id: 84, name: "Hungary", iso: "HU" },
+  { id: 85, name: "Moldova", iso: "MD" },
+  { id: 86, name: "Italy", iso: "IT" },
+  { id: 87, name: "Paraguay", iso: "PY" },
+  { id: 88, name: "Honduras", iso: "HN" },
+  { id: 89, name: "Tunisia", iso: "TN" },
+  { id: 90, name: "Nicaragua", iso: "NI" },
+  { id: 92, name: "Bolivia", iso: "BO" },
+  { id: 93, name: "Costa Rica", iso: "CR" },
+  { id: 94, name: "Guatemala", iso: "GT" },
+  { id: 95, name: "United Arab Emirates", iso: "AE" },
+  { id: 96, name: "Zimbabwe", iso: "ZW" },
+  { id: 97, name: "Puerto Rico", iso: "PR" },
+  { id: 98, name: "Sudan", iso: "SD" },
+  { id: 99, name: "Togo", iso: "TG" },
+  { id: 100, name: "Kuwait", iso: "KW" },
+  { id: 101, name: "El Salvador", iso: "SV" },
+  { id: 102, name: "Libya", iso: "LY" },
+  { id: 103, name: "Jamaica", iso: "JM" },
+  { id: 104, name: "Trinidad and Tobago", iso: "TT" },
+  { id: 105, name: "Ecuador", iso: "EC" },
+  { id: 107, name: "Oman", iso: "OM" },
+  { id: 108, name: "Bosnia and Herzegovina", iso: "BA" },
+  { id: 109, name: "Dominican Republic", iso: "DO" },
+  { id: 110, name: "Syria", iso: "SY" },
+  { id: 111, name: "Qatar", iso: "QA" },
+  { id: 112, name: "Panama", iso: "PA" },
+  { id: 113, name: "Cuba", iso: "CU" },
+  { id: 114, name: "Mauritania", iso: "MR" },
+  { id: 115, name: "Sierra Leone", iso: "SL" },
+  { id: 116, name: "Jordan", iso: "JO" },
+  { id: 117, name: "Portugal", iso: "PT" },
+  { id: 119, name: "Burundi", iso: "BI" },
+  { id: 120, name: "Benin", iso: "BJ" },
+  { id: 121, name: "Brunei", iso: "BN" },
+  { id: 122, name: "Bahamas", iso: "BS" },
+  { id: 123, name: "Botswana", iso: "BW" },
+  { id: 125, name: "Central African Republic", iso: "CF" },
+  { id: 128, name: "Georgia", iso: "GE" },
+  { id: 129, name: "Greece", iso: "GR" },
+  { id: 131, name: "Guyana", iso: "GY" },
+  { id: 132, name: "Iceland", iso: "IS" },
+  { id: 135, name: "Liberia", iso: "LR" },
+  { id: 136, name: "Lesotho", iso: "LS" },
+  { id: 137, name: "Malawi", iso: "MW" },
+  { id: 138, name: "Namibia", iso: "NA" },
+  { id: 139, name: "Niger", iso: "NE" },
+  { id: 140, name: "Rwanda", iso: "RW" },
+  { id: 141, name: "Slovakia", iso: "SK" },
+  { id: 143, name: "Tajikistan", iso: "TJ" },
+  { id: 145, name: "Bahrain", iso: "BH" },
+  { id: 147, name: "Zambia", iso: "ZM" },
+  { id: 148, name: "Armenia", iso: "AM" },
+  { id: 149, name: "Somalia", iso: "SO" },
+  { id: 151, name: "Chile", iso: "CL" },
+  { id: 152, name: "Burkina Faso", iso: "BF" },
+  { id: 153, name: "Lebanon", iso: "LB" },
+  { id: 154, name: "Gabon", iso: "GA" },
+  { id: 155, name: "Albania", iso: "AL" },
+  { id: 156, name: "Uruguay", iso: "UY" },
+  { id: 157, name: "Mauritius", iso: "MU" },
+  { id: 159, name: "Maldives", iso: "MV" },
+  { id: 161, name: "Turkmenistan", iso: "TM" },
+  { id: 163, name: "Finland", iso: "FI" },
+  { id: 165, name: "Luxembourg", iso: "LU" },
+  { id: 168, name: "Djibouti", iso: "DJ" },
+  { id: 171, name: "Montenegro", iso: "ME" },
+  { id: 172, name: "Denmark", iso: "DK" },
+  { id: 173, name: "Switzerland", iso: "CH" },
+  { id: 174, name: "Norway", iso: "NO" },
+  { id: 175, name: "Australia", iso: "AU" },
+  { id: 176, name: "Eritrea", iso: "ER" },
+  { id: 182, name: "Japan", iso: "JP" },
+  { id: 187, name: "United States", iso: "US" },
+  { id: 188, name: "Palestine", iso: "PS" },
+  { id: 190, name: "South Korea", iso: "KR" },
+  { id: 196, name: "Singapore", iso: "SG" },
+  { id: 199, name: "Malta", iso: "MT" },
+].sort((a, b) => a.name.localeCompare(b.name));
+
+// Build a lookup map for quick access by ID
+const COUNTRY_BY_ID = new Map<number, TigerCountry>(
+  TIGER_COUNTRIES.map((c) => [c.id, c])
+);
+
+export function getCountryById(id: number): TigerCountry | undefined {
+  return COUNTRY_BY_ID.get(id);
+}
+
+// ─── API Functions ───────────────────────────────────────────────────────────
+
+/**
+ * Get balance from Tiger SMS.
+ * Response: ACCESS_BALANCE:11.57
+ */
+export async function tigerGetBalance(): Promise<number> {
+  const text = await tigerRequest({ action: "getBalance" });
+  if (!text.startsWith("ACCESS_BALANCE:")) {
+    throw new Error(`Tiger SMS balance error: ${text}`);
+  }
+  return parseFloat(text.split(":")[1]);
+}
+
+/**
+ * Get all countries (static list — Tiger SMS has no country list API).
+ */
+export function tigerGetCountries(): TigerCountry[] {
+  return TIGER_COUNTRIES;
+}
+
+/**
+ * Get available products/services for a country using getPrices.
+ * Response: {"countryId":{"serviceCode":{"cost":"0.50","count":100}}}
+ */
+export async function tigerGetPricesForCountry(
+  countryId: number
+): Promise<Record<string, { cost: number; count: number }>> {
+  try {
+    const text = await tigerRequest({ action: "getPrices", country: String(countryId) });
+    // If the API returns an error string (not JSON)
+    if (!text.startsWith("{")) {
+      console.error(`Tiger SMS getPrices error for country ${countryId}: ${text}`);
+      return {};
+    }
+    const raw: TigerPricesRaw = JSON.parse(text);
+    const countryData = raw[String(countryId)];
+    if (!countryData) return {};
+    // Normalize cost from string to number
+    return Object.fromEntries(
+      Object.entries(countryData).map(([svc, data]) => [
+        svc,
+        { cost: parseFloat(data.cost), count: data.count },
+      ])
+    );
+  } catch (err) {
+    console.error(`Tiger SMS getPrices error for country ${countryId}:`, err);
+    return {};
+  }
+}
+
+/**
+ * Get available products for a country (returns TigerProduct[] with price in USD).
+ */
+export async function tigerGetProducts(countryId: number): Promise<TigerProduct[]> {
+  const pricesData = await tigerGetPricesForCountry(countryId);
+  return Object.entries(pricesData)
+    .filter(([, data]) => data.count > 0)
+    .map(([code, data]) => ({
+      name: getServiceDisplayName(code),
+      qty: data.count,
+      price: data.cost,
+    }))
+    .sort((a, b) => b.qty - a.qty);
+}
+
+/**
+ * Get prices for a specific service across a country.
+ */
+export async function tigerGetPriceForService(
+  countryId: number,
+  service: string
+): Promise<{ cost: number; count: number } | null> {
+  const serviceCode = getServiceCode(service);
+  const prices = await tigerGetPricesForCountry(countryId);
+  return prices[serviceCode.toLowerCase()] ?? null;
+}
+
+/**
+ * Buy a virtual number.
+ * Response: ACCESS_NUMBER:activationId:phoneNumber
+ */
+export async function tigerBuyNumber(
+  countryId: number,
+  service: string
+): Promise<TigerOrder> {
+  const serviceCode = getServiceCode(service);
+  const text = await tigerRequest({
+    action: "getNumber",
+    service: serviceCode.toLowerCase(),
+    country: String(countryId),
+  });
+
+  if (text === "NO_NUMBERS") {
+    throw new Error(`No phone numbers available for ${service} right now. Please try another country.`);
+  }
+  if (text === "NO_BALANCE") {
+    throw new Error("Insufficient funds in the master account wallet. Please contact admin.");
+  }
+  if (text === "BAD_SERVICE") {
+    throw new Error(`Service "${service}" is not supported. Please choose another.`);
+  }
+  if (text === "BAD_COUNTRY") {
+    throw new Error(`Country is not supported. Please choose another.`);
+  }
+  if (!text.startsWith("ACCESS_NUMBER:")) {
+    throw new Error(`Tiger SMS buy error: ${text}`);
+  }
+
+  // ACCESS_NUMBER:activationId:phoneNumber
+  const parts = text.split(":");
+  const activationId = parts[1];
+  const phone = parts[2];
+
+  // Expiry: Tiger SMS numbers are typically valid for 20 minutes
+  const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+
+  return {
+    id: activationId,
+    phone,
+    service: getServiceDisplayName(serviceCode),
+    country: countryId,
+    price: 0, // Price is looked up from getPrices before purchasing
+    status: "pending",
+    expiresAt,
+    sms: [],
+  };
+}
+
+/**
+ * Check the status of an activation order.
+ * Responses:
+ *   STATUS_WAIT_CODE    → pending (waiting for SMS)
+ *   STATUS_WAIT_RETRY   → received (waiting for another SMS)
+ *   STATUS_OK:CODE      → received (code in hand)
+ *   ACCESS_CANCEL       → canceled
+ */
+export interface TigerStatusResult {
+  status: TigerOrderStatus;
+  code: string | null;
+}
+
+export async function tigerGetStatus(activationId: string): Promise<TigerStatusResult> {
+  const text = await tigerRequest({ action: "getStatus", id: activationId });
+
+  if (text === "STATUS_WAIT_CODE") {
+    return { status: "pending", code: null };
+  }
+  if (text === "STATUS_WAIT_RETRY") {
+    return { status: "received", code: null };
+  }
+  if (text === "ACCESS_CANCEL") {
+    return { status: "canceled", code: null };
+  }
+  if (text.startsWith("STATUS_OK:")) {
+    const code = text.substring("STATUS_OK:".length);
+    return { status: "received", code };
+  }
+  if (text === "NO_ACTIVATION") {
+    return { status: "canceled", code: null };
+  }
+
+  console.warn(`Tiger SMS unknown status for ${activationId}: ${text}`);
+  return { status: "pending", code: null };
+}
+
+/**
+ * Cancel an activation (setStatus=8).
+ * Response: ACCESS_CANCEL or error string
+ */
+export async function tigerCancelOrder(activationId: string): Promise<boolean> {
+  console.log(`[Tiger SMS] Attempting to cancel activation: ${activationId}`);
+  
+  try {
+    const text = await tigerRequest({ action: "setStatus", id: activationId, status: "8" });
+    console.log(`[Tiger SMS] Cancel response for ${activationId}: ${text}`);
+    
+    if (text === "ACCESS_CANCEL") {
+      console.log(`[Tiger SMS] Cancellation confirmed for ${activationId}`);
+      return true;
+    }
+    
+    if (text === "EARLY_CANCEL_DENIED") {
+      console.warn(`[Tiger SMS] Early cancel denied for ${activationId} - user must wait before cancelling`);
+      throw new Error("Cannot cancel yet — please wait 1-2 minutes after purchase before cancelling.");
+    }
+    
+    if (text === "NO_ACTIVATION") {
+      throw new Error("Activation not found. It may have already expired.");
+    }
+    
+    // Any other response is an error
+    console.error(`[Tiger SMS] Unexpected cancel response for ${activationId}: ${text}`);
+    throw new Error(`Tiger SMS cancel error: ${text}`);
+  } catch (err: any) {
+    console.error(`[Tiger SMS] Cancel API request failed for ${activationId}:`, err);
+    throw err;
+  }
+}
+
+/**
+ * Finish/complete an activation (setStatus=6).
+ */
+export async function tigerFinishOrder(activationId: string): Promise<boolean> {
+  const text = await tigerRequest({ action: "setStatus", id: activationId, status: "6" });
+  if (text === "STATUS_OK") return true;
+  if (text === "ACCESS_CANCEL") return true; // already cleaned up
+  console.warn(`Tiger SMS finish returned: ${text}`);
+  return true; // treat any response as ok for finish
+}
+
+/**
+ * Ban order — report number as used and cancel (setStatus=8, which is also cancel on Tiger SMS).
+ * Tiger SMS doesn't have a separate "ban" status so we use cancel (8).
+ */
+export async function tigerBanOrder(activationId: string): Promise<boolean> {
+  return tigerCancelOrder(activationId);
+}
