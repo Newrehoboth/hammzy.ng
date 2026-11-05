@@ -146,6 +146,7 @@ export async function handleOrderSyncStatus(order: any, nextStatus: string, cont
 }
 
 // ─── Server Functions ─────────────────────────────────────────────────────────
+// All validators use Zod schemas for TanStack Start compatibility
 
 // 1. Get Countries (Daisy SMS — Alternative tab, USA only)
 export const getFivesimCountries = createServerFn({ method: "GET" }).handler(async () => {
