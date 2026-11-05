@@ -2,6 +2,6 @@
   "framework": null,
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "installCommand": "npm ci",
+  "installCommand": "rm -rf node_modules .tanstack && npm install",
   "outputDirectory": ".vercel/output"
 }
