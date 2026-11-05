@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 function gen4() {
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -15,7 +16,7 @@ function normalizeOrigin(origin: string) {
 
 // Send (or resend) a signup verification code to the user's email.
 export const sendSignupCode = createServerFn({ method: "POST" })
-  .validator((d: { email: string; origin: string }) => d)
+  .validator(z.object({ email: z.string(), origin: z.string() }))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const origin = normalizeOrigin(data.origin);
@@ -46,7 +47,7 @@ export const sendSignupCode = createServerFn({ method: "POST" })
 
 // Verify the signup code and mark the profile verified.
 export const verifySignupCode = createServerFn({ method: "POST" })
-  .validator((d: { email: string; code: string }) => d)
+  .validator(z.object({ email: z.string(), code: z.string() }))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const code = data.code.trim();
@@ -69,7 +70,7 @@ export const verifySignupCode = createServerFn({ method: "POST" })
 
 // Request a password reset link. Always returns ok to avoid leaking which emails exist.
 export const requestPasswordReset = createServerFn({ method: "POST" })
-  .validator((d: { email: string; origin: string }) => d)
+  .validator(z.object({ email: z.string(), origin: z.string() }))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const origin = normalizeOrigin(data.origin);
@@ -95,7 +96,7 @@ export const requestPasswordReset = createServerFn({ method: "POST" })
 
 // Complete a password reset using a token from the email link.
 export const resetPassword = createServerFn({ method: "POST" })
-  .validator((d: { token: string; password: string }) => d)
+  .validator(z.object({ token: z.string(), password: z.string() }))
   .handler(async ({ data }) => {
     const token = data.token.trim();
     const password = data.password;

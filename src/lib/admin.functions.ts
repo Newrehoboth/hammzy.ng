@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function assertAdmin(context: { supabase: any; userId: string }) {
@@ -194,7 +195,7 @@ export const adminListLogPurchases = createServerFn({ method: "GET" })
 
 export const adminSetSuspended = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { userId: string; suspended: boolean }) => d)
+  .validator(z.object({ userId: z.string(), suspended: z.boolean() }))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -211,7 +212,7 @@ export const adminSetSuspended = createServerFn({ method: "POST" })
 
 export const adminDeleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { userId: string }) => d)
+  .validator(z.object({ userId: z.string() }))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     if (data.userId === context.userId) throw new Error("You cannot delete your own admin account");
