@@ -169,7 +169,7 @@ export const getGetatextServices = createServerFn({ method: "GET" }).handler(asy
 
 // 2. Get Products for a Country (Daisy SMS — USA only, so country param is ignored)
 export const getFivesimProducts = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       country: z.union([z.string(), z.number()]),
       operator: z.string().optional(),
@@ -193,7 +193,7 @@ export interface OperatorPriceNormalized {
 }
 
 export const getFivesimOperatorPrices = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       country: z.union([z.string(), z.number()]),
       product: z.string(),
@@ -215,7 +215,7 @@ export const getFivesimOperatorPrices = createServerFn({ method: "POST" })
 
 // 2c. Get operators for a country (Tiger SMS = always just "any")
 export const getFivesimCountryOperators = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ country: z.union([z.string(), z.number()]) }))
+  .validator(z.object({ country: z.union([z.string(), z.number()]) }))
   .handler(async () => {
     return ["any"];
   });
@@ -238,7 +238,7 @@ export const getFivesimProfile = createServerFn({ method: "GET" })
 // 4. Create Order (Daisy SMS — Alternative, USA only)
 export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     z.object({
       countrySlug: z.union([z.string(), z.number()]),  // ignored for DaisySMS (USA only)
       countryName: z.string(),
@@ -351,7 +351,7 @@ export const createOrder = createServerFn({ method: "POST" })
 // 4b. Create Order (GetAText — Standard / USA only)
 export const createGetatextOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     z.object({
       service: z.string(),       // GetAText api_name e.g. "whatsapp"
       serviceName: z.string(),   // display name e.g. "Whatsapp"
@@ -475,7 +475,7 @@ export const createGetatextOrder = createServerFn({ method: "POST" })
 // 5. Retrieve and Sync Single Order
 export const getOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ orderId: z.string() }))
+  .validator(z.object({ orderId: z.string() }))
   .handler(async ({ data, context }) => {
     const { data: order, error } = await context.supabase
       .from("orders")
@@ -599,7 +599,7 @@ export const listMyOrders = createServerFn({ method: "GET" })
 // 7. Cancel Order
 export const cancelOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ orderId: z.string() }))
+  .validator(z.object({ orderId: z.string() }))
   .handler(async ({ data, context }) => {
     const { data: order, error } = await context.supabase
       .from("orders")
@@ -698,7 +698,7 @@ export const cancelOrder = createServerFn({ method: "POST" })
 // 8. Finish Order
 export const finishOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ orderId: z.string() }))
+  .validator(z.object({ orderId: z.string() }))
   .handler(async ({ data, context }) => {
     const { data: order, error } = await context.supabase
       .from("orders")
@@ -733,7 +733,7 @@ export const finishOrder = createServerFn({ method: "POST" })
 // 9. Ban Order (report number and cancel)
 export const banOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ orderId: z.string() }))
+  .validator(z.object({ orderId: z.string() }))
   .handler(async ({ data, context }) => {
     const { data: order, error } = await context.supabase
       .from("orders")
