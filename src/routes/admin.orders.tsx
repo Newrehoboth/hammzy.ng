@@ -221,7 +221,19 @@ function AdminOrders() {
                     <td className="p-4">
                       <p className="text-xs font-semibold mb-1">{typeof l.type === 'object' ? JSON.stringify(l.type) : String(l.type ?? "Account")}</p>
                       <div className="flex items-center gap-2 max-w-md bg-muted/30 p-2 rounded border border-border">
-                        <code className="text-[10px] font-mono truncate max-w-full">{typeof l.credential === 'object' ? JSON.stringify(l.credential) : String(l.credential ?? "")}</code>
+                        <code className="text-[10px] font-mono truncate max-w-full whitespace-pre-wrap">
+                          {(() => {
+                            let cred = typeof l.credential === 'object' ? JSON.stringify(l.credential) : String(l.credential ?? "");
+                            cred = cred.replace(/\\t/g, '\n');
+                            try {
+                              const parsed = JSON.parse(cred);
+                              if (typeof parsed === 'object') {
+                                cred = JSON.stringify(parsed, null, 2);
+                              }
+                            } catch {}
+                            return cred;
+                          })()}
+                        </code>
                         <button
                           onClick={(e) => handleCopy(e, l.credential, l.id)}
                           className="text-muted-foreground hover:text-foreground shrink-0"

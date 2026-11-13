@@ -506,8 +506,21 @@ function OrderHistory() {
 
                         {/* Credentials box */}
                         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/30 px-3.5 py-2.5 max-w-xl">
-                          <code className="text-xs font-mono select-all break-all text-foreground/90 leading-relaxed block max-h-20 overflow-y-auto w-full">
-                            {typeof l.credential === 'object' ? JSON.stringify(l.credential, null, 2) : String(l.credential ?? "")}
+                          <code className="text-xs font-mono select-all break-all text-foreground/90 leading-relaxed block max-h-20 overflow-y-auto w-full whitespace-pre-wrap">
+                            {(() => {
+                              let cred = typeof l.credential === 'object' ? JSON.stringify(l.credential) : String(l.credential ?? "");
+                              // Replace \t with newlines for better formatting
+                              cred = cred.replace(/\\t/g, '\n');
+                              // If it looks like JSON, try to parse and format it
+                              try {
+                                const parsed = JSON.parse(cred);
+                                if (typeof parsed === 'object') {
+                                  cred = JSON.stringify(parsed, null, 2);
+                                }
+                              } catch {}
+                              return cred;
+                            })()}
+                          </code>
                           </code>
                           <button
                             onClick={(e) => handleCopy(e, l.credential, l.id)}
