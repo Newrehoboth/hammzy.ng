@@ -9,6 +9,7 @@ const DAISYSMS_FALLBACK_KEY = "Yc2x52Wu1v4rNMzbtOuy9fxbPd0pLcre";
 function getApiKey(): string {
   const key = process.env.DAISYSMS_API_KEY || DAISYSMS_FALLBACK_KEY;
   console.log("[DaisySMS] Using API key source:", process.env.DAISYSMS_API_KEY ? "env var" : "fallback");
+  console.log("[DaisySMS] API key length:", key.length, "first 10 chars:", key.slice(0, 10));
   return key;
 }
 

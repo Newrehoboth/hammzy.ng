@@ -521,7 +521,6 @@ function OrderHistory() {
                               return cred;
                             })()}
                           </code>
-                          </code>
                           <button
                             onClick={(e) => handleCopy(e, l.credential, l.id)}
                             className="text-muted-foreground hover:text-foreground shrink-0 self-center size-8 rounded-lg flex items-center justify-center hover:bg-muted/80 transition-colors"
