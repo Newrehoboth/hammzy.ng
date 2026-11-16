@@ -221,3 +221,56 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+export const adminSendEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ 
+    userId: z.string(), 
+    subject: z.string().min(1), 
+    message: z.string().min(1) 
+  }))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    
+    // Get user profile to fetch their email
+    const { data: profile, error: profileError } = await context.supabase
+      .from("profiles")
+      .select("email, username, full_name")
+      .eq("id", data.userId)
+      .single();
+    
+    if (profileError || !profile) throw new Error("User not found");
+    if (!profile.email) throw new Error("User has no email address");
+
+    // Send email using Resend API
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    
+    const userName = profile.username || profile.full_name || "User";
+    
+    const { error: sendError } = await resend.emails.send({
+      from: "Hammzy Digitals <noreply@hammzy.ng>",
+      to: profile.email,
+      subject: data.subject,
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #111;">Hello ${userName},</h2>
+          <div style="margin: 20px 0; line-height: 1.6; color: #333;">
+            ${data.message.replace(/\n/g, '<br>')}
+          </div>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 12px;">
+            This email was sent from Hammzy Digitals admin panel.<br>
+            If you have any questions, please reply to this email.
+          </p>
+        </div>
+      `,
+    });
+
+    if (sendError) {
+      console.error("[Admin] Email send error:", sendError);
+      throw new Error(`Failed to send email: ${sendError.message}`);
+    }
+
+    return { ok: true, email: profile.email };
+  });

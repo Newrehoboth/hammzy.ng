@@ -2,15 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, Search, Ban, Trash2, Plus, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Search, Ban, Trash2, Plus, ArrowLeft, ChevronLeft, ChevronRight, Mail, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   adminListUsers,
   adminSetSuspended,
   adminDeleteUser,
+  adminSendEmail,
 } from "@/lib/admin.functions";
 import { adminAddBalance } from "@/lib/logs.functions";
 
@@ -24,11 +26,17 @@ function AdminUsers() {
   const setSuspended = useServerFn(adminSetSuspended);
   const deleteUser = useServerFn(adminDeleteUser);
   const addBalance = useServerFn(adminAddBalance);
+  const sendEmail = useServerFn(adminSendEmail);
   const [busy, setBusy] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+  
+  // Email dialog state
+  const [emailDialog, setEmailDialog] = useState<{ userId: string; userEmail: string; userName: string } | null>(null);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
 
   const users = useQuery({
     queryKey: ["admin-users"],
@@ -81,6 +89,41 @@ function AdminUsers() {
       refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onOpenEmailDialog = (user: any) => {
+    setEmailDialog({
+      userId: user.id,
+      userEmail: user.email,
+      userName: user.username || user.full_name || user.email,
+    });
+    setEmailSubject("");
+    setEmailMessage("");
+  };
+
+  const onSendEmail = async () => {
+    if (!emailDialog) return;
+    if (!emailSubject.trim() || !emailMessage.trim()) {
+      toast.error("Please fill in both subject and message");
+      return;
+    }
+    
+    setBusy(emailDialog.userId);
+    try {
+      await sendEmail({ 
+        data: { 
+          userId: emailDialog.userId, 
+          subject: emailSubject.trim(), 
+          message: emailMessage.trim() 
+        } 
+      });
+      toast.success(`Email sent to ${emailDialog.userEmail}`);
+      setEmailDialog(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send email");
     } finally {
       setBusy(null);
     }
@@ -175,6 +218,9 @@ function AdminUsers() {
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="sm" disabled={busy === u.id} onClick={() => onOpenEmailDialog(u)} title="Send email">
+                        <Mail className="size-4" />
+                      </Button>
                       <Button variant="ghost" size="sm" disabled={busy === u.id} onClick={() => onAddBalance(u.id)}>
                         <Plus className="size-4" /> Balance
                       </Button>
@@ -244,6 +290,65 @@ function AdminUsers() {
           >
             Next <ChevronRight className="size-4" />
           </Button>
+        </div>
+      )}
+      
+      {/* Email Dialog */}
+      {emailDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Send Email</h3>
+                <p className="text-sm text-muted-foreground">
+                  To: {emailDialog.userName} ({emailDialog.userEmail})
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-full" 
+                onClick={() => setEmailDialog(null)}
+              >
+                <X className="size-5" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Subject</label>
+                <Input
+                  placeholder="Enter email subject..."
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              
+              <div>
+                <label className="mb-2 block text-sm font-medium">Message</label>
+                <Textarea
+                  placeholder="Type your message here..."
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                  className="min-h-[200px] w-full resize-none"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEmailDialog(null)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={onSendEmail}
+                  disabled={busy === emailDialog.userId || !emailSubject.trim() || !emailMessage.trim()}
+                >
+                  <Mail className="mr-2 size-4" />
+                  Send Email
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
