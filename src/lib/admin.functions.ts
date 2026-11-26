@@ -249,7 +249,7 @@ export const adminSendEmail = createServerFn({ method: "POST" })
     const userName = profile.username || profile.full_name || "User";
     
     const { error: sendError } = await resend.emails.send({
-      from: "Hammzy Digitals <noreply@hammzy.ng>",
+      from: "Hammzy Digitals <onboarding@resend.dev>",
       to: profile.email,
       subject: data.subject,
       html: `
@@ -373,7 +373,7 @@ export const adminSendBulkEmail = createServerFn({ method: "POST" })
       
       try {
         await resend.emails.send({
-          from: "Hammzy Digitals <noreply@hammzy.ng>",
+          from: "Hammzy Digitals <onboarding@resend.dev>",
           to: profile.email,
           subject: data.subject,
           html: `
