@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, Search, Ban, Trash2, Plus, ArrowLeft, ChevronLeft, ChevronRight, Mail, X } from "lucide-react";
+import { Users, Search, Ban, Trash2, Plus, ArrowLeft, ChevronLeft, ChevronRight, Mail, X, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
   adminSetSuspended,
   adminDeleteUser,
   adminSendEmail,
+  adminSendBulkEmail,
 } from "@/lib/admin.functions";
 import { adminAddBalance } from "@/lib/logs.functions";
 
@@ -27,6 +28,7 @@ function AdminUsers() {
   const deleteUser = useServerFn(adminDeleteUser);
   const addBalance = useServerFn(adminAddBalance);
   const sendEmail = useServerFn(adminSendEmail);
+  const sendBulkEmail = useServerFn(adminSendBulkEmail);
   const [busy, setBusy] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,6 +37,7 @@ function AdminUsers() {
   
   // Email dialog state
   const [emailDialog, setEmailDialog] = useState<{ userId: string; userEmail: string; userName: string } | null>(null);
+  const [bulkEmailDialog, setBulkEmailDialog] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
 
@@ -104,6 +107,12 @@ function AdminUsers() {
     setEmailMessage("");
   };
 
+  const onOpenBulkEmailDialog = () => {
+    setBulkEmailDialog(true);
+    setEmailSubject("");
+    setEmailMessage("");
+  };
+
   const onSendEmail = async () => {
     if (!emailDialog) return;
     if (!emailSubject.trim() || !emailMessage.trim()) {
@@ -124,6 +133,34 @@ function AdminUsers() {
       setEmailDialog(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to send email");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onSendBulkEmail = async () => {
+    if (!emailSubject.trim() || !emailMessage.trim()) {
+      toast.error("Please fill in both subject and message");
+      return;
+    }
+    
+    if (!confirm(`Send this email to ALL ${users.data?.length || 0} users?`)) return;
+    
+    setBusy("bulk");
+    try {
+      const result = await sendBulkEmail({ 
+        data: { 
+          subject: emailSubject.trim(), 
+          message: emailMessage.trim() 
+        } 
+      });
+      toast.success(`Email sent to ${result.sent} users successfully!`);
+      if (result.failed > 0) {
+        toast.warning(`${result.failed} emails failed to send`);
+      }
+      setBulkEmailDialog(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send bulk email");
     } finally {
       setBusy(null);
     }
@@ -177,8 +214,14 @@ function AdminUsers() {
             className="pl-9"
           />
         </div>
-        <div className="text-sm text-muted-foreground">
-          Showing {totalItems === 0 ? 0 : (activePage - 1) * itemsPerPage + 1} - {Math.min(activePage * itemsPerPage, totalItems)} of {totalItems} users
+        <div className="flex items-center gap-3">
+          <Button onClick={onOpenBulkEmailDialog} className="gap-2">
+            <Send className="size-4" />
+            Email All Users
+          </Button>
+          <div className="text-sm text-muted-foreground">
+            Showing {totalItems === 0 ? 0 : (activePage - 1) * itemsPerPage + 1} - {Math.min(activePage * itemsPerPage, totalItems)} of {totalItems} users
+          </div>
         </div>
       </div>
 
@@ -345,6 +388,69 @@ function AdminUsers() {
                 >
                   <Mail className="mr-2 size-4" />
                   Send Email
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Email Dialog */}
+      {bulkEmailDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Send Email to All Users</h3>
+                <p className="text-sm text-muted-foreground">
+                  This will send to {users.data?.length || 0} users
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-full" 
+                onClick={() => setBulkEmailDialog(false)}
+              >
+                <X className="size-5" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Subject</label>
+                <Input
+                  placeholder="Enter email subject..."
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              
+              <div>
+                <label className="mb-2 block text-sm font-medium">Message</label>
+                <Textarea
+                  placeholder="Type your message here..."
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                  className="min-h-[200px] w-full resize-none"
+                />
+              </div>
+              
+              <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/20 dark:text-amber-200">
+                ⚠️ This will send the email to all users at once. Make sure to review your message carefully.
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setBulkEmailDialog(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={onSendBulkEmail}
+                  disabled={busy === "bulk" || !emailSubject.trim() || !emailMessage.trim()}
+                >
+                  <Send className="mr-2 size-4" />
+                  Send to All Users
                 </Button>
               </div>
             </div>
