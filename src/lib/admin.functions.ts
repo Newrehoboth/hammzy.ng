@@ -341,7 +341,7 @@ export const adminSendEmail = createServerFn({ method: "POST" })
 
       console.log('[Admin Email] Sending email...');
       await transporter.sendMail({
-        from: '"Hammzy Digitals" <rehobothcomedy@gmail.com>',
+        from: '"Hammzy Digitals" <noreply@hammzy.ng>',
         to: profile.email,
         subject: data.subject,
         html,
@@ -477,7 +477,7 @@ export const adminSendBulkEmail = createServerFn({ method: "POST" })
       try {
         console.log(`[Admin Bulk Email] Sending ${index + 1}/${profiles.length} to: ${profile.email}`);
         await transporter.sendMail({
-          from: '"Hammzy Digitals" <rehobothcomedy@gmail.com>',
+          from: '"Hammzy Digitals" <noreply@hammzy.ng>',
           to: profile.email,
           subject: data.subject,
           html,
