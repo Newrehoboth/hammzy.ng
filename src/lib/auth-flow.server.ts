@@ -1,7 +1,7 @@
 import { render4DigitCodeEmail, renderResetEmail } from "./email-templates.server";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
-const FROM = "Hammzy Digitals <noreply@hammzy.ng>";
+const FROM = "Hammzy Digitals <onboarding@resend.dev>";
 
 async function sendEmail(to: string, subject: string, html: string) {
   const lovableKey = process.env.LOVABLE_API_KEY;
@@ -43,6 +43,11 @@ async function sendEmail(to: string, subject: string, html: string) {
   } else {
     throw new Error("Email service is not configured (RESEND_API_KEY is missing)");
   }
+}
+
+// Export for use in admin functions
+export async function sendEmailViaGateway(to: string, subject: string, html: string) {
+  return sendEmail(to, subject, html);
 }
 
 export async function sendVerificationCodeEmail(to: string, code: string, link: string) {

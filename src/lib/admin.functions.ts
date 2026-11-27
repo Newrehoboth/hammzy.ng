@@ -242,106 +242,94 @@ export const adminSendEmail = createServerFn({ method: "POST" })
     if (profileError || !profile) throw new Error("User not found");
     if (!profile.email) throw new Error("User has no email address");
 
-    // Send email using Resend API
-    const { Resend } = await import("resend");
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    
     const userName = profile.username || profile.full_name || "User";
     
-    const { error: sendError } = await resend.emails.send({
-      from: "Hammzy Digitals <onboarding@resend.dev>",
-      to: profile.email,
-      subject: data.subject,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${data.subject}</title>
-        </head>
-        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-            <!-- Purple Header -->
-            <tr>
-              <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
-                <div style="background-color: rgba(255,255,255,0.15); display: inline-block; padding: 8px 20px; border-radius: 20px; margin-bottom: 20px;">
-                  <p style="margin: 0; color: #ffffff; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">HAMMZY DIGITALS UPDATE</p>
-                </div>
-                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 1.3;">${data.subject}</h1>
-              </td>
-            </tr>
-            
-            <!-- Content -->
-            <tr>
-              <td style="padding: 40px 30px;">
-                <p style="margin: 0 0 10px 0; color: #666; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">HAMMZY DIGITALS UPDATE</p>
-                
-                <h2 style="margin: 0 0 20px 0; color: #111; font-size: 18px; font-weight: 700;">👋 Hello ${userName}!</h2>
-                
-                <div style="color: #333; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
-                  ${data.message.split('\n').map(line => `<p style="margin: 0 0 15px 0;">${line}</p>`).join('')}
-                </div>
-                
-                <p style="margin: 30px 0 10px 0; color: #111; font-size: 15px; font-weight: 600;">HAMMZY DIGITALS</p>
-                <p style="margin: 0; color: #666; font-size: 14px;">Your Digital Services, Made Simple.</p>
-              </td>
-            </tr>
-            
-            <!-- Footer Icons Section -->
-            <tr>
-              <td style="padding: 30px 30px 40px 30px; border-top: 1px solid #e5e5e5;">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td align="center" style="padding: 10px;">
-                      <div style="display: inline-block; text-align: center; margin: 0 15px;">
-                        <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                          <span style="font-size: 24px;">📱</span>
-                        </div>
-                        <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Virtual</p>
-                        <p style="margin: 0; color: #999; font-size: 11px;">Numbers</p>
-                      </div>
-                    </td>
-                    <td align="center" style="padding: 10px;">
-                      <div style="display: inline-block; text-align: center; margin: 0 15px;">
-                        <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                          <span style="font-size: 24px;">👤</span>
-                        </div>
-                        <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Social</p>
-                        <p style="margin: 0; color: #999; font-size: 11px;">Accounts</p>
-                      </div>
-                    </td>
-                    <td align="center" style="padding: 10px;">
-                      <div style="display: inline-block; text-align: center; margin: 0 15px;">
-                        <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                          <span style="font-size: 24px;">🎁</span>
-                        </div>
-                        <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Special</p>
-                        <p style="margin: 0; color: #999; font-size: 11px;">Offers</p>
-                      </div>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            
-            <!-- Footer -->
-            <tr>
-              <td style="padding: 20px 30px; background-color: #f9f9f9; text-align: center; border-top: 1px solid #e5e5e5;">
-                <p style="margin: 0 0 10px 0; color: #999; font-size: 12px;">© 2026 Hammzy Digitals. All rights reserved.</p>
-                <p style="margin: 0; color: #999; font-size: 11px;">This email was sent from Hammzy Digitals admin panel.</p>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
-      `,
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${data.subject}</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <div style="background-color: rgba(255,255,255,0.15); display: inline-block; padding: 8px 20px; border-radius: 20px; margin-bottom: 20px;">
+                <p style="margin: 0; color: #ffffff; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">HAMMZY DIGITALS UPDATE</p>
+              </div>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 1.3;">${data.subject}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 10px 0; color: #666; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">HAMMZY DIGITALS UPDATE</p>
+              <h2 style="margin: 0 0 20px 0; color: #111; font-size: 18px; font-weight: 700;">👋 Hello ${userName}!</h2>
+              <div style="color: #333; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
+                ${data.message.split('\n').map(line => `<p style="margin: 0 0 15px 0;">${line}</p>`).join('')}
+              </div>
+              <p style="margin: 30px 0 10px 0; color: #111; font-size: 15px; font-weight: 600;">HAMMZY DIGITALS</p>
+              <p style="margin: 0; color: #666; font-size: 14px;">Your Digital Services, Made Simple.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 30px 30px 40px 30px; border-top: 1px solid #e5e5e5;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding: 10px;">
+                    <div style="display: inline-block; text-align: center; margin: 0 15px;">
+                      <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; margin-bottom: 8px;"><span style="font-size: 24px; line-height: 50px;">📱</span></div>
+                      <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Virtual</p>
+                      <p style="margin: 0; color: #999; font-size: 11px;">Numbers</p>
+                    </div>
+                  </td>
+                  <td align="center" style="padding: 10px;">
+                    <div style="display: inline-block; text-align: center; margin: 0 15px;">
+                      <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; margin-bottom: 8px;"><span style="font-size: 24px; line-height: 50px;">👤</span></div>
+                      <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Social</p>
+                      <p style="margin: 0; color: #999; font-size: 11px;">Accounts</p>
+                    </div>
+                  </td>
+                  <td align="center" style="padding: 10px;">
+                    <div style="display: inline-block; text-align: center; margin: 0 15px;">
+                      <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; margin-bottom: 8px;"><span style="font-size: 24px; line-height: 50px;">🎁</span></div>
+                      <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Special</p>
+                      <p style="margin: 0; color: #999; font-size: 11px;">Offers</p>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 30px; background-color: #f9f9f9; text-align: center; border-top: 1px solid #e5e5e5;">
+              <p style="margin: 0 0 10px 0; color: #999; font-size: 12px;">© 2026 Hammzy Digitals. All rights reserved.</p>
+              <p style="margin: 0; color: #999; font-size: 11px;">This email was sent from Hammzy Digitals admin panel.</p>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    // Use Brevo SMTP
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.default.createTransport({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      auth: {
+        user: process.env.BREVO_SMTP_USER,
+        pass: process.env.BREVO_SMTP_PASSWORD,
+      },
     });
 
-    if (sendError) {
-      console.error("[Admin] Email send error:", sendError);
-      throw new Error(`Failed to send email: ${sendError.message}`);
-    }
+    await transporter.sendMail({
+      from: '"Hammzy Digitals" <rehobothcomedy@gmail.com>',
+      to: profile.email,
+      subject: data.subject,
+      html,
+    });
 
     return { ok: true, email: profile.email };
   });
@@ -364,102 +352,95 @@ export const adminSendBulkEmail = createServerFn({ method: "POST" })
     if (profileError) throw new Error("Failed to fetch users");
     if (!profiles || profiles.length === 0) throw new Error("No users found");
 
-    // Send email using Resend API
-    const { Resend } = await import("resend");
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    
+    // Use Brevo SMTP
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.default.createTransport({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      auth: {
+        user: process.env.BREVO_SMTP_USER,
+        pass: process.env.BREVO_SMTP_PASSWORD,
+      },
+    });
+
     const emailPromises = profiles.map(async (profile) => {
       const userName = profile.username || profile.full_name || "User";
       
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${data.subject}</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <tr>
+              <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+                <div style="background-color: rgba(255,255,255,0.15); display: inline-block; padding: 8px 20px; border-radius: 20px; margin-bottom: 20px;">
+                  <p style="margin: 0; color: #ffffff; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">HAMMZY DIGITALS UPDATE</p>
+                </div>
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 1.3;">${data.subject}</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 40px 30px;">
+                <p style="margin: 0 0 10px 0; color: #666; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">HAMMZY DIGITALS UPDATE</p>
+                <h2 style="margin: 0 0 20px 0; color: #111; font-size: 18px; font-weight: 700;">👋 Hello ${userName}!</h2>
+                <div style="color: #333; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
+                  ${data.message.split('\n').map(line => `<p style="margin: 0 0 15px 0;">${line}</p>`).join('')}
+                </div>
+                <p style="margin: 30px 0 10px 0; color: #111; font-size: 15px; font-weight: 600;">HAMMZY DIGITALS</p>
+                <p style="margin: 0; color: #666; font-size: 14px;">Your Digital Services, Made Simple.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px 30px 40px 30px; border-top: 1px solid #e5e5e5;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="padding: 10px;">
+                      <div style="display: inline-block; text-align: center; margin: 0 15px;">
+                        <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; margin-bottom: 8px;"><span style="font-size: 24px; line-height: 50px;">📱</span></div>
+                        <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Virtual</p>
+                        <p style="margin: 0; color: #999; font-size: 11px;">Numbers</p>
+                      </div>
+                    </td>
+                    <td align="center" style="padding: 10px;">
+                      <div style="display: inline-block; text-align: center; margin: 0 15px;">
+                        <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; margin-bottom: 8px;"><span style="font-size: 24px; line-height: 50px;">👤</span></div>
+                        <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Social</p>
+                        <p style="margin: 0; color: #999; font-size: 11px;">Accounts</p>
+                      </div>
+                    </td>
+                    <td align="center" style="padding: 10px;">
+                      <div style="display: inline-block; text-align: center; margin: 0 15px;">
+                        <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; margin-bottom: 8px;"><span style="font-size: 24px; line-height: 50px;">🎁</span></div>
+                        <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Special</p>
+                        <p style="margin: 0; color: #999; font-size: 11px;">Offers</p>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 20px 30px; background-color: #f9f9f9; text-align: center; border-top: 1px solid #e5e5e5;">
+                <p style="margin: 0 0 10px 0; color: #999; font-size: 12px;">© 2026 Hammzy Digitals. All rights reserved.</p>
+                <p style="margin: 0; color: #999; font-size: 11px;">This email was sent from Hammzy Digitals admin panel.</p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+      
       try {
-        await resend.emails.send({
-          from: "Hammzy Digitals <onboarding@resend.dev>",
+        await transporter.sendMail({
+          from: '"Hammzy Digitals" <rehobothcomedy@gmail.com>',
           to: profile.email,
           subject: data.subject,
-          html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>${data.subject}</title>
-            </head>
-            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-                <!-- Purple Header -->
-                <tr>
-                  <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
-                    <div style="background-color: rgba(255,255,255,0.15); display: inline-block; padding: 8px 20px; border-radius: 20px; margin-bottom: 20px;">
-                      <p style="margin: 0; color: #ffffff; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">HAMMZY DIGITALS UPDATE</p>
-                    </div>
-                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 1.3;">${data.subject}</h1>
-                  </td>
-                </tr>
-                
-                <!-- Content -->
-                <tr>
-                  <td style="padding: 40px 30px;">
-                    <p style="margin: 0 0 10px 0; color: #666; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">HAMMZY DIGITALS UPDATE</p>
-                    
-                    <h2 style="margin: 0 0 20px 0; color: #111; font-size: 18px; font-weight: 700;">👋 Hello ${userName}!</h2>
-                    
-                    <div style="color: #333; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
-                      ${data.message.split('\n').map(line => `<p style="margin: 0 0 15px 0;">${line}</p>`).join('')}
-                    </div>
-                    
-                    <p style="margin: 30px 0 10px 0; color: #111; font-size: 15px; font-weight: 600;">HAMMZY DIGITALS</p>
-                    <p style="margin: 0; color: #666; font-size: 14px;">Your Digital Services, Made Simple.</p>
-                  </td>
-                </tr>
-                
-                <!-- Footer Icons Section -->
-                <tr>
-                  <td style="padding: 30px 30px 40px 30px; border-top: 1px solid #e5e5e5;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td align="center" style="padding: 10px;">
-                          <div style="display: inline-block; text-align: center; margin: 0 15px;">
-                            <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                              <span style="font-size: 24px;">📱</span>
-                            </div>
-                            <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Virtual</p>
-                            <p style="margin: 0; color: #999; font-size: 11px;">Numbers</p>
-                          </div>
-                        </td>
-                        <td align="center" style="padding: 10px;">
-                          <div style="display: inline-block; text-align: center; margin: 0 15px;">
-                            <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                              <span style="font-size: 24px;">👤</span>
-                            </div>
-                            <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Social</p>
-                            <p style="margin: 0; color: #999; font-size: 11px;">Accounts</p>
-                          </div>
-                        </td>
-                        <td align="center" style="padding: 10px;">
-                          <div style="display: inline-block; text-align: center; margin: 0 15px;">
-                            <div style="width: 50px; height: 50px; background-color: #f0f0f0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                              <span style="font-size: 24px;">🎁</span>
-                            </div>
-                            <p style="margin: 0; color: #111; font-size: 12px; font-weight: 600;">Special</p>
-                            <p style="margin: 0; color: #999; font-size: 11px;">Offers</p>
-                          </div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                
-                <!-- Footer -->
-                <tr>
-                  <td style="padding: 20px 30px; background-color: #f9f9f9; text-align: center; border-top: 1px solid #e5e5e5;">
-                    <p style="margin: 0 0 10px 0; color: #999; font-size: 12px;">© 2026 Hammzy Digitals. All rights reserved.</p>
-                    <p style="margin: 0; color: #999; font-size: 11px;">This email was sent from Hammzy Digitals admin panel.</p>
-                  </td>
-                </tr>
-              </table>
-            </body>
-            </html>
-          `,
+          html,
         });
         return { success: true, email: profile.email };
       } catch (error) {
@@ -469,8 +450,8 @@ export const adminSendBulkEmail = createServerFn({ method: "POST" })
     });
 
     const results = await Promise.allSettled(emailPromises);
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
+    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
 
     return { 
       ok: true, 
