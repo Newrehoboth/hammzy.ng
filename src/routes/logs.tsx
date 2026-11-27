@@ -492,15 +492,32 @@ function LogsPage() {
                   <p className="flex items-center gap-2 text-sm font-semibold text-emerald-600">
                     <CheckCircle2 className="size-4" /> Purchase Successful — Your Credential
                   </p>
-                  <div className="rounded-lg bg-background border border-border p-3 font-mono text-xs break-all select-all">
-                    {purchased.credential}
+                  <div className="rounded-lg bg-background border border-border p-3 font-mono text-xs break-all select-all whitespace-pre-wrap">
+                    {(() => {
+                      try {
+                        const parsed = JSON.parse(purchased.credential);
+                        if (parsed.details) {
+                          return parsed.details.replace(/\\t/g, '\n');
+                        }
+                        return purchased.credential;
+                      } catch {
+                        return purchased.credential;
+                      }
+                    })()}
                   </div>
                   <Button
                     size="sm"
                     variant="secondary"
                     className="w-full"
                     onClick={() => {
-                      navigator.clipboard.writeText(purchased.credential);
+                      let textToCopy = purchased.credential;
+                      try {
+                        const parsed = JSON.parse(purchased.credential);
+                        if (parsed.details) {
+                          textToCopy = parsed.details.replace(/\\t/g, '\n');
+                        }
+                      } catch {}
+                      navigator.clipboard.writeText(textToCopy);
                       setCopiedCred(true);
                       setTimeout(() => setCopiedCred(false), 2000);
                     }}

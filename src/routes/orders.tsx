@@ -509,16 +509,20 @@ function OrderHistory() {
                           <code className="text-xs font-mono select-all break-all text-foreground/90 leading-relaxed block max-h-20 overflow-y-auto w-full whitespace-pre-wrap">
                             {(() => {
                               let cred = typeof l.credential === 'object' ? JSON.stringify(l.credential) : String(l.credential ?? "");
-                              // Replace \t with newlines for better formatting
-                              cred = cred.replace(/\\t/g, '\n');
-                              // If it looks like JSON, try to parse and format it
+                              // Try to parse if it's JSON
                               try {
                                 const parsed = JSON.parse(cred);
+                                // If it has a "details" field, use that and format it
+                                if (parsed.details) {
+                                  return parsed.details.replace(/\\t/g, '\n');
+                                }
+                                // Otherwise if it's an object, stringify it nicely
                                 if (typeof parsed === 'object') {
-                                  cred = JSON.stringify(parsed, null, 2);
+                                  return JSON.stringify(parsed, null, 2);
                                 }
                               } catch {}
-                              return cred;
+                              // If not JSON or parsing failed, just replace tabs with newlines
+                              return cred.replace(/\\t/g, '\n');
                             })()}
                           </code>
                           <button
