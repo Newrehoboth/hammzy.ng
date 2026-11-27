@@ -232,6 +232,10 @@ export const adminSendEmail = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     
+    console.log('[Admin Email] Starting email send process...');
+    console.log('[Admin Email] BREVO_SMTP_USER:', process.env.BREVO_SMTP_USER ? 'SET' : 'MISSING');
+    console.log('[Admin Email] BREVO_SMTP_PASSWORD:', process.env.BREVO_SMTP_PASSWORD ? 'SET (length: ' + process.env.BREVO_SMTP_PASSWORD.length + ')' : 'MISSING');
+    
     // Get user profile to fetch their email
     const { data: profile, error: profileError } = await context.supabase
       .from("profiles")
@@ -239,8 +243,17 @@ export const adminSendEmail = createServerFn({ method: "POST" })
       .eq("id", data.userId)
       .single();
     
-    if (profileError || !profile) throw new Error("User not found");
-    if (!profile.email) throw new Error("User has no email address");
+    if (profileError || !profile) {
+      console.error('[Admin Email] User not found:', profileError);
+      throw new Error("User not found");
+    }
+    if (!profile.email) {
+      console.error('[Admin Email] User has no email address');
+      throw new Error("User has no email address");
+    }
+
+    console.log('[Admin Email] Sending to:', profile.email);
+    console.log('[Admin Email] Subject:', data.subject);
 
     const userName = profile.username || profile.full_name || "User";
     
@@ -313,25 +326,34 @@ export const adminSendEmail = createServerFn({ method: "POST" })
       </html>
     `;
 
-    // Use Brevo SMTP
-    const nodemailer = await import("nodemailer");
-    const transporter = nodemailer.default.createTransport({
-      host: 'smtp-relay.brevo.com',
-      port: 587,
-      auth: {
-        user: process.env.BREVO_SMTP_USER,
-        pass: process.env.BREVO_SMTP_PASSWORD,
-      },
-    });
+    try {
+      console.log('[Admin Email] Creating Brevo transporter...');
+      // Use Brevo SMTP
+      const nodemailer = await import("nodemailer");
+      const transporter = nodemailer.default.createTransport({
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        auth: {
+          user: process.env.BREVO_SMTP_USER,
+          pass: process.env.BREVO_SMTP_PASSWORD,
+        },
+      });
 
-    await transporter.sendMail({
-      from: '"Hammzy Digitals" <rehobothcomedy@gmail.com>',
-      to: profile.email,
-      subject: data.subject,
-      html,
-    });
+      console.log('[Admin Email] Sending email...');
+      await transporter.sendMail({
+        from: '"Hammzy Digitals" <rehobothcomedy@gmail.com>',
+        to: profile.email,
+        subject: data.subject,
+        html,
+      });
 
-    return { ok: true, email: profile.email };
+      console.log('[Admin Email] ✅ Email sent successfully to:', profile.email);
+      return { ok: true, email: profile.email };
+    } catch (error) {
+      console.error('[Admin Email] ❌ Failed to send email:', error);
+      console.error('[Admin Email] Error details:', error instanceof Error ? error.message : String(error));
+      throw error;
+    }
   });
 
 export const adminSendBulkEmail = createServerFn({ method: "POST" })
