@@ -365,14 +365,27 @@ export const adminSendBulkEmail = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     
+    console.log('[Admin Bulk Email] Starting bulk email send...');
+    console.log('[Admin Bulk Email] Subject:', data.subject);
+    console.log('[Admin Bulk Email] BREVO_SMTP_USER:', process.env.BREVO_SMTP_USER ? 'SET' : 'MISSING');
+    console.log('[Admin Bulk Email] BREVO_SMTP_PASSWORD:', process.env.BREVO_SMTP_PASSWORD ? 'SET (length: ' + process.env.BREVO_SMTP_PASSWORD.length + ')' : 'MISSING');
+    
     // Get all user emails
     const { data: profiles, error: profileError } = await context.supabase
       .from("profiles")
       .select("email, username, full_name")
       .not("email", "is", null);
     
-    if (profileError) throw new Error("Failed to fetch users");
-    if (!profiles || profiles.length === 0) throw new Error("No users found");
+    if (profileError) {
+      console.error('[Admin Bulk Email] Failed to fetch users:', profileError);
+      throw new Error("Failed to fetch users");
+    }
+    if (!profiles || profiles.length === 0) {
+      console.error('[Admin Bulk Email] No users found');
+      throw new Error("No users found");
+    }
+
+    console.log(`[Admin Bulk Email] Fetched ${profiles.length} users with emails`);
 
     // Use Brevo SMTP
     const nodemailer = await import("nodemailer");
@@ -385,7 +398,11 @@ export const adminSendBulkEmail = createServerFn({ method: "POST" })
       },
     });
 
-    const emailPromises = profiles.map(async (profile) => {
+    console.log('[Admin Bulk Email] Transporter created, starting to send emails...');
+    let successCount = 0;
+    let failCount = 0;
+
+    const emailPromises = profiles.map(async (profile, index) => {
       const userName = profile.username || profile.full_name || "User";
       
       const html = `
@@ -458,15 +475,19 @@ export const adminSendBulkEmail = createServerFn({ method: "POST" })
       `;
       
       try {
+        console.log(`[Admin Bulk Email] Sending ${index + 1}/${profiles.length} to: ${profile.email}`);
         await transporter.sendMail({
           from: '"Hammzy Digitals" <rehobothcomedy@gmail.com>',
           to: profile.email,
           subject: data.subject,
           html,
         });
+        successCount++;
+        console.log(`[Admin Bulk Email] ✅ Success ${successCount}/${profiles.length}: ${profile.email}`);
         return { success: true, email: profile.email };
       } catch (error) {
-        console.error(`[Admin] Failed to send email to ${profile.email}:`, error);
+        failCount++;
+        console.error(`[Admin Bulk Email] ❌ Failed ${failCount}/${profiles.length} to ${profile.email}:`, error instanceof Error ? error.message : String(error));
         return { success: false, email: profile.email, error };
       }
     });
@@ -474,6 +495,8 @@ export const adminSendBulkEmail = createServerFn({ method: "POST" })
     const results = await Promise.allSettled(emailPromises);
     const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
     const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
+
+    console.log(`[Admin Bulk Email] 📊 Final results: ${successful} successful, ${failed} failed out of ${profiles.length} total`);
 
     return { 
       ok: true, 
